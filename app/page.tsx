@@ -27,7 +27,7 @@ export default function Home(){
  const visited=places.filter(x=>records[x.id]?.date).length;
  const visible=places.filter(x=>(region==='전체'||x.region===region)&&(filter==='전체'||(filter==='방문 완료'?!!records[x.id]?.date:filter==='아직 안 간 곳'?!records[x.id]?.date:route.includes(x.id)))&&`${x.name} ${x.address} ${x.detail}`.includes(search.trim()));
  const select=(id:number)=>{setSelected(id);setRoad(false)};
- const update=(id:number,patch:Partial<RecordData>)=>setRecords(old=>({...old,[id]:{date:'',note:'',...old[id],...patch}}));
+ const update=(id:number,patch:Partial<RecordData>)=>setRecords(old=>({...old,[id]:{...(old[id]||{date:'',note:''}),...patch}}));
  const toggle=(id:number)=>setRoute(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
  const move=(index:number,delta:number)=>setRoute(old=>{const n=[...old];if(index+delta<0||index+delta>=n.length)return old;[n[index],n[index+delta]]=[n[index+delta],n[index]];return n});
  const query=(id:number)=>{const x=places.find(p=>p.id===id)!;return x.id===4?'서울 성북천 분수마루':x.id===64?'광주 양림동 52-4':x.query};
