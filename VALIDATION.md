@@ -7,3 +7,10 @@
 - Itinerary order is user chosen; segment links open the next stop in Naver Maps search. Visitors select the place, directions and transit, then set the previous stop as origin. Source data lacks coordinates for direct transit deep links. No automatic shortest-path or in-app driving distance claims.
 - Records and itinerary are local to this browser and origin. No cross-device synchronization.
 - WebMCP select_statue is feature detected; no supported contract validation context was available. Browser interaction and physical-location checks have not been performed.
+
+## Naver prefilled transit (2026-09-10)
+- Button resolves both itinerary endpoints transiently via Esri non-stored geocoding, then opens the Naver web transit URL with Web Mercator coordinates and both original statue names.
+- No geocoder results are saved to browser storage, the repository, or a database.
+- Source-address/approach-point precision applies; not all statue coordinates are surveyed. Low-scoring/locality-only matches abort instead of routing to a city center.
+- Seongbuk fountain plaza address supplement: https://sb.newstool.co.kr/view.php?aid=15689&eid=8928 (Dongseomun-dong 2-ga 130-2).
+- Naver current public web parser inspected for coordinate format and SIMPLE_POI/transit handling; browser interaction not tested.
