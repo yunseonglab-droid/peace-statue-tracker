@@ -37,15 +37,11 @@ export default function Home(){
   if(openingRoad!==null)return;
   const target=p;
   setRoad(true);setError('');
-  if(naverStreetViews[target.id]){window.open(naverStreetViews[target.id],'_blank','noopener,noreferrer');return;}
-  const popup=window.open('about:blank','_blank');
-  if(!popup){setError('거리뷰를 열려면 이 사이트의 팝업을 허용해 주세요.');return;}
-  popup.opener=null;popup.document.title='네이버 거리뷰 연결 중';popup.document.body.textContent=`${target.name}의 거리뷰를 여는 중입니다…`;
   setOpeningRoad(target.id);
   try{
    const url=naverStreetViews[target.id]||buildNaverStreetViewUrl(await resolvePoint(target,{streetView:true}));
-   if(!popup.closed)popup.location.replace(url);
-  }catch(e){popup.close();setError(e instanceof Error?e.message:'거리뷰 위치를 확인하지 못했습니다. 다시 시도해 주세요.');}
+   window.location.assign(url);
+  }catch(e){setError(e instanceof Error?e.message:'거리뷰 위치를 확인하지 못했습니다. 다시 시도해 주세요.');}
   finally{setOpeningRoad(null);}
  };
  const directions=async(a:number,b:number)=>{
