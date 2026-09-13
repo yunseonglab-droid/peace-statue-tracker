@@ -37,6 +37,7 @@ export default function Home(){
   if(openingRoad!==null)return;
   const target=p;
   setRoad(true);setError('');
+  if(naverStreetViews[target.id]){window.open(naverStreetViews[target.id],'_blank','noopener,noreferrer');return;}
   const popup=window.open('about:blank','_blank');
   if(!popup){setError('거리뷰를 열려면 이 사이트의 팝업을 허용해 주세요.');return;}
   popup.opener=null;popup.document.title='네이버 거리뷰 연결 중';popup.document.body.textContent=`${target.name}의 거리뷰를 여는 중입니다…`;
