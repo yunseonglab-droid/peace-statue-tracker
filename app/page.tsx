@@ -6,13 +6,14 @@ import { MapPin, Route, Search, ArrowUpRight, Check, Plus, ArrowUp, ArrowDown, X
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import places from './places.json';
-import {resolvePoint,buildNaverTransitUrl} from '@/lib/naver-directions';
+import {resolvePoint,buildNaverTransitUrl,buildNaverStreetViewUrl,naverStreetViews} from '@/lib/naver-directions';
 type RecordData={date:string;note:string};
 const regions=[...new Set(places.map(p=>p.region))];
 const key='peace-field-guide-v1';
 const today=()=>new Date().toLocaleDateString('sv-SE');
 const enc=encodeURIComponent;
 export default function Home(){
+ const [openingRoad,setOpeningRoad]=useState<number|null>(null);
  const [selected,setSelected]=useState(1),[search,setSearch]=useState(''),[region,setRegion]=useState('전체'),[filter,setFilter]=useState('전체'),[records,setRecords]=useState<Record<string,RecordData>>({}),[route,setRoute]=useState<number[]>([]),[ready,setReady]=useState(false),[error,setError]=useState(''),[road,setRoad]=useState(false),[alphabetical,setAlphabetical]=useState(false),[copied,setCopied]=useState(false),[routing,setRouting]=useState<string|null>(null);
  const p=places.find(x=>x.id===selected)!;
  useEffect(()=>{try{const raw=localStorage.getItem(key);if(raw){const d=JSON.parse(raw);if(d.records&&typeof d.records==='object')setRecords(Object.fromEntries(Object.entries(d.records).filter(([id,v])=>places.some(p=>p.id===Number(id))&&!!v&&typeof (v as RecordData).date==='string'&&typeof (v as RecordData).note==='string')) as Record<string,RecordData>);if(Array.isArray(d.route))setRoute([...new Set(d.route.filter((id:unknown)=>typeof id==='number'&&places.some(p=>p.id===id)))] as number[]);}}catch{setError('저장된 기록을 불러오지 못했습니다. 브라우저 저장 설정을 확인해 주세요.');}setReady(true)},[]);
@@ -32,6 +33,20 @@ export default function Home(){
  const toggle=(id:number)=>setRoute(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
  const move=(index:number,delta:number)=>setRoute(old=>{const n=[...old];if(index+delta<0||index+delta>=n.length)return old;[n[index],n[index+delta]]=[n[index+delta],n[index]];return n});
  const query=(id:number)=>{const x=places.find(p=>p.id===id)!;return x.id===4?'서울 성북천 분수마루':x.id===64?'광주 양림동 52-4':x.query};
+ const openStreetView=async()=>{
+  if(openingRoad!==null)return;
+  const target=p;
+  setRoad(true);setError('');
+  const popup=window.open('about:blank','_blank');
+  if(!popup){setError('거리뷰를 열려면 이 사이트의 팝업을 허용해 주세요.');return;}
+  popup.opener=null;popup.document.title='네이버 거리뷰 연결 중';popup.document.body.textContent=`${target.name}의 거리뷰를 여는 중입니다…`;
+  setOpeningRoad(target.id);
+  try{
+   const url=naverStreetViews[target.id]||buildNaverStreetViewUrl(await resolvePoint(target,{streetView:true}));
+   if(!popup.closed)popup.location.replace(url);
+  }catch(e){popup.close();setError(e instanceof Error?e.message:'거리뷰 위치를 확인하지 못했습니다. 다시 시도해 주세요.');}
+  finally{setOpeningRoad(null);}
+ };
  const directions=async(a:number,b:number)=>{
   if(routing)return;
   const popup=window.open('about:blank','_blank');
@@ -54,8 +69,8 @@ export default function Home(){
     <footer><span>표시 중: {visible.length}개소 / 전체 79개소</span><button onClick={resetFilters}>필터 초기화</button></footer>
    </aside>
    <section className="main-panel" aria-label="선택한 장소" id="map"><div className="map-wrap"><iframe key={p.id} title={`${p.name} 지도 검색 결과`} src={`https://maps.google.com/maps?q=${enc(query(p.id))}&hl=ko&z=16&output=embed`} referrerPolicy="no-referrer-when-downgrade" loading="lazy" allowFullScreen/><div className="map-notice"><Info size={21}/><div><span>좌표 정밀도</span><p>제공 가이드의 장소명 검색 결과입니다. 현장 보행 지형 및 현판 설명문을 함께 대조하세요.</p></div><small><MapPin size={13}/>현장 대조 권장</small></div></div>
-    <div className="detail-content"><article className="detail"><div className="detail-tags"><span className="region-tag"><Landmark size={15}/>{p.region}</span>{records[p.id]?.date&&<span className="status-tag done"><Check size={15}/>답사 완료 ({records[p.id].date})</span>}<span className="record-id"># GUIDE-{String(p.id).padStart(3,'0')}</span></div><h2>{p.name}</h2><div className="address-row"><p className="address"><MapPin size={20}/>{p.address==='-'?'도로명주소 미기재 · 현장 위치 참고':p.address}</p><button className="small-action" onClick={copyAddress}><Copy size={15}/>{copied?'복사됨':'주소 복사'}</button></div><button className={`small-action street-button ${road?'active':''}`} onClick={()=>setRoad(!road)} aria-expanded={road}><ScanEye size={16}/>거리뷰</button>
-     {road&&<div className="road-panel"><b>네이버지도에서 거리뷰 확인</b><p>선택한 장소를 네이버지도에서 검색합니다. 검색 결과에서 장소를 선택한 뒤 ‘거리뷰’를 누르세요. 공원 안·학교 안은 촬영 영상이 없을 수 있습니다.</p><a target="_blank" rel="noreferrer" href={`https://map.naver.com/p/search/${enc(query(p.id))}`}>네이버지도에서 장소 선택 <ArrowUpRight size={16}/></a></div>}
+    <div className="detail-content"><article className="detail"><div className="detail-tags"><span className="region-tag"><Landmark size={15}/>{p.region}</span>{records[p.id]?.date&&<span className="status-tag done"><Check size={15}/>답사 완료 ({records[p.id].date})</span>}<span className="record-id"># GUIDE-{String(p.id).padStart(3,'0')}</span></div><h2>{p.name}</h2><div className="address-row"><p className="address"><MapPin size={20}/>{p.address==='-'?'도로명주소 미기재 · 현장 위치 참고':p.address}</p><button className="small-action" onClick={copyAddress}><Copy size={15}/>{copied?'복사됨':'주소 복사'}</button></div><button className={`small-action street-button ${road?'active':''}`} onClick={openStreetView} disabled={openingRoad!==null} aria-busy={openingRoad===p.id}><ScanEye size={16}/>{openingRoad===p.id?'거리뷰 연결 중…':'네이버 거리뷰 바로 보기'}</button>
+     {road&&<div className="road-panel" role="status"><b>{p.name} 거리뷰</b><p>{naverStreetViews[p.id]?'선택한 소녀상의 네이버 장소와 연결된 거리뷰를 바로 엽니다.':'가이드의 위치를 자동으로 입력해 가장 가까운 거리뷰를 엽니다. 촬영 지점에 따라 소녀상이 화면에 보이지 않을 수 있습니다.'} 영상이 없거나 위치가 다르면 아래에서 장소를 확인해 주세요.</p><a target="_blank" rel="noreferrer" href={`https://map.naver.com/p/search/${enc(query(p.id))}`}>네이버지도에서 위치 확인 <ArrowUpRight size={16}/></a></div>}
      <div className="action-row"><button className="route-add" disabled={!ready} onClick={()=>toggle(p.id)}>{route.includes(p.id)?<Check size={18}/>:<Plus size={18}/>} {route.includes(p.id)?`동선 ${route.indexOf(p.id)+1}번 담김`:'동선에 추가'}</button><a className="action" href={`https://map.kakao.com/link/search/${enc(query(p.id))}`} target="_blank" rel="noreferrer"><Navigation size={18}/>카카오맵 길찾기</a><a className="action" href={`https://map.naver.com/p/search/${enc(query(p.id))}`} target="_blank" rel="noreferrer"><MapPin size={18}/>네이버지도</a></div></article>
      <div className="info-grid"><article className="info-card"><h3><Navigation size={21}/>설치 위치 및 접근</h3><p>{p.detail.split('▶')[0]}</p>{p.detail.includes('▶')&&<p className="howto">{p.detail.split('▶')[1]}</p>}<small>현장 위치 안내 · 제공 PDF {p.page}쪽</small></article><article className="info-card" id="guide"><h3><Shield size={21}/>현장 답사 주의사항</h3><p>{p.note||'현장의 안내 표지와 보행 질서를 확인해 주세요.'}</p><p className="howto">학교 안 장소는 사전 출입·촬영 허가를 확인하세요. 위치 이전 여부는 답사 전 다시 확인해 주세요.</p><small>원문 기준 · 현장 확인 필요</small></article></div>
      <article className="visit-record"><div className="visit-head"><label><Checkbox checked={!!records[p.id]?.date} disabled={!ready} onCheckedChange={v=>update(p.id,{date:v?today():''})}/><strong>다녀왔어요</strong></label>{records[p.id]?.date?<input type="date" aria-label="방문 날짜" value={records[p.id].date} onChange={e=>update(p.id,{date:e.target.value})}/>:<span>방문하면 체크해 주세요</span>}</div><textarea disabled={!ready} aria-label="답사 메모" placeholder="현장 메모를 남겨보세요. 입구, 촬영 위치, 느낀 점…" value={records[p.id]?.note||''} onChange={e=>update(p.id,{note:e.target.value})}/><small>이 브라우저에 자동 저장됩니다. 다른 기기와 동기화되지 않습니다.</small></article>
